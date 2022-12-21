@@ -1,0 +1,414 @@
+@charset "UTF-8";
+
+///////////////////////////////////////////////////////////////////////////
+//
+// Fonts here with imported with @import will not work in the production build.
+// Instead, do this from within _app.tsx
+//
+//   <Head>
+//     ...
+//     <style>
+//       @import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+//       @import url('https://fonts.googleapis.com/css?family=Luckiest+Guy&display=swap');
+//     </style>
+//   </Head>
+//
+// The above solution will work, but has some issues in that initially the fallback font
+// will load, then the imported fonts will load after them. This will cause a layout shift
+// when the page is loaded. The best practice is to use Next font optimization:
+//
+//  https://nextjs.org/docs/basic-features/font-optimization
+//  https://nextjs.org/docs/api-reference/next/font
+//
+///////////////////////////////////////////////////////////////////////////
+
+@import './bootstrap/custom-variables.scss';
+@import '~bootstrap/scss/bootstrap.scss';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root {
+    // Using smooth as Bootstrap does is annoying for page switches.
+    // Programmaticaly disabling it every time we switch pages is tedious.
+    // If we ever want smooth scroll for a particular page or feature, it's
+    // easier to programmatically opt in, rather than opting out every time.
+    scroll-behavior: auto; // overwrite bootstrap
+  }
+}
+
+body {
+  background-color: rgb(237, 242, 249);
+  color: #333;
+  // This is instead done in _app.tsx using the optimized font implementation.
+  // font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+  //   'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji',
+  //   'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+  font-size: 1rem;
+  font-weight: 400;
+  width: 100%;
+  height: auto;
+  line-height: 1.5;
+  margin: 0;
+  overflow-x: hidden;
+  text-align: left;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+
+hr {
+  margin: 1rem 0;
+  color: inherit;
+  border: 0;
+  border-top: 1px solid;
+  opacity: 0.25;
+}
+
+.transition-none * {
+  -webkit-transition: none !important;
+  -moz-transition: none !important;
+  -ms-transition: none !important;
+  -o-transition: none !important;
+  transition: none !important;
+}
+
+/* ============================
+.hamburger (this is an alternative to the toggler)
+============================ */
+
+.hamburger-container {
+  display: inline-block;
+  position: relative;
+  cursor: pointer;
+  width: 30px; /* Adjust w x h as needed. */
+  height: 30px;
+}
+
+.hamburger-inner {
+  display: block;
+  top: 50%;
+  left: 0;
+  margin-top: -2px;
+}
+
+.hamburger-inner,
+.hamburger-inner::before,
+.hamburger-inner::after {
+  position: absolute;
+  width: 100%;
+  height: 4px;
+  background-color: #fff; /* Change color as needed. */
+  border-radius: 4px;
+  transition: transform 0.15s linear;
+}
+
+.hamburger-inner::before,
+.hamburger-inner::after {
+  content: '';
+  display: block;
+}
+
+.hamburger-inner::before {
+  top: -10px;
+}
+
+.hamburger-inner::after {
+  bottom: -10px;
+}
+
+/* Squeeze */
+.hamburger-squeeze .hamburger-inner {
+  transition-duration: 0.075s;
+  transition-timing-function: cubic-bezier(0.55, 0.055, 0.675, 0.19);
+}
+
+.hamburger-squeeze .hamburger-inner::before {
+  transition: top 0.075s 0.12s ease, opacity 0.075s ease;
+}
+
+.hamburger-squeeze .hamburger-inner::after {
+  transition: bottom 0.075s 0.12s ease,
+    transform 0.075s cubic-bezier(0.55, 0.055, 0.675, 0.19);
+}
+
+.hamburger-squeeze.active .hamburger-inner {
+  transform: rotate(45deg);
+  transition-delay: 0.12s;
+  transition-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+
+.hamburger-squeeze.active .hamburger-inner::before {
+  top: 0;
+  opacity: 0;
+  transition: top 0.075s ease, opacity 0.075s 0.12s ease;
+}
+
+.hamburger-squeeze.active .hamburger-inner::after {
+  bottom: 0;
+  transform: rotate(-90deg);
+  transition: bottom 0.075s ease,
+    transform 0.075s 0.12s cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+
+.navbar-expand .hamburger-container {
+  display: none;
+}
+@media (min-width: 576px) {
+  .navbar-expand-sm .hamburger-container {
+    display: none;
+  }
+}
+@media (min-width: 768px) {
+  .navbar-expand-md .hamburger-container {
+    display: none;
+  }
+}
+@media (min-width: 992px) {
+  .navbar-expand-lg .hamburger-container {
+    display: none;
+  }
+}
+@media (min-width: 1200px) {
+  .navbar-expand-xl .hamburger-container {
+    display: none;
+  }
+}
+@media (min-width: 1400px) {
+  .navbar-expand-xxl .hamburger-container {
+    display: none;
+  }
+}
+
+// form {
+//   background-color: #fafafa;
+// }
+
+form label,
+.form-label {
+  color: var(--bs-secondary);
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
+  margin-bottom: 0px;
+}
+
+.form-check-label {
+  font-weight: normal;
+}
+
+.form-text {
+  font-size: 12px;
+}
+
+.bg-transparent-unimportant {
+  background-color: transparent;
+}
+
+.bg-white-unimportant {
+  background-color: #fff;
+}
+
+.bg-off-white {
+  background-color: #fafafa;
+}
+
+/* ======================
+    .hide-scrollbar 
+====================== */
+
+.hide-scrollbar {
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ======================
+    .table-flush
+====================== */
+
+.table-flush {
+  thead tr:first-child {
+    border-top: none;
+  }
+
+  thead tr th:first-child,
+  thead tr td:first-child {
+    border-left: none;
+  }
+
+  thead tr th:last-child,
+  thead tr td:last-child {
+    border-right: none;
+  }
+
+  tbody:first-child tr:first-child {
+    border-top: none;
+  }
+
+  tbody tr th:first-child,
+  tbody tr td:first-child {
+    border-left: none;
+  }
+
+  tbody tr th:last-child,
+  tbody tr td:last-child {
+    border-right: none;
+  }
+
+  tbody:last-child tr:last-child {
+    border-bottom: none;
+  }
+
+  tfoot tr:last-child {
+    border-bottom: none;
+  }
+
+  tfoot tr th:first-child,
+  tfoot tr td:first-child {
+    border-left: none;
+  }
+
+  tfoot tr th:last-child,
+  tfoot tr td:last-child {
+    border-right: none;
+  }
+}
+
+/* ======================
+    ul.custom-list
+====================== */
+/* Obviously, this will only work in conjunction with Bootstrap icons. */
+
+ul.custom-list {
+  list-style: none;
+  padding-left: 1.5em;
+}
+
+ul.custom-list li {
+  margin-bottom: 10px;
+}
+
+ul.custom-list li::before {
+  content: '\F270'; /* '\F287' */
+  color: var(--bs-primary);
+  font-family: 'Bootstrap-icons';
+  font-weight: bold;
+  display: inline-block;
+  width: 1.25em;
+  margin-left: -1em;
+}
+
+/* ======================
+
+====================== */
+
+.child-mb-1 > * {
+  margin-bottom: 0.25rem !important;
+}
+.child-mb-2 > * {
+  margin-bottom: 0.5rem !important;
+}
+.child-mb-3 > * {
+  margin-bottom: 1rem !important;
+}
+.child-mb-4 > * {
+  margin-bottom: 1.5rem !important;
+}
+.child-mb-5 > * {
+  margin-bottom: 3rem !important;
+}
+
+.w-90 {
+  width: 90% !important;
+}
+
+/* ======================
+Modal Classes for React Bootstrap Modal
+====================== */
+
+.modal-500 {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: calc(100% - 20px);
+  width: 500px;
+}
+
+.modal-600 {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: calc(100% - 20px);
+  width: 600px;
+}
+
+.modal-700 {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: calc(100% - 20px);
+  width: 700px;
+}
+
+.modal-800 {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: calc(100% - 20px);
+  width: 800px;
+}
+
+.modal-900 {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: calc(100% - 20px);
+  width: 900px;
+}
+
+.modal-1000 {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: calc(100% - 20px);
+  width: 1000px;
+}
+
+.modal-1100 {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: calc(100% - 20px);
+  width: 1100px;
+}
+
+.modal-1200 {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: calc(100% - 20px);
+  width: 1200px;
+}
+
+/* =============================================================================
+                                Media Queries
+============================================================================= */
+
+/* sm */
+@media (min-width: 576px) {
+}
+
+/* md */
+@media (min-width: 768px) {
+}
+
+/* lg */
+@media (min-width: 992px) {
+}
+
+/* xl */
+@media (min-width: 1200px) {
+}
+
+/* xxl */
+@media (min-width: 1400px) {
+}
