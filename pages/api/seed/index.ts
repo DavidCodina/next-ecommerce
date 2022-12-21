@@ -1,6 +1,6 @@
 import Product from 'models/productModel'
 import connectDB from 'utils/db'
-import data from '../../data'
+import data from './data'
 
 const productsWithNoIds = data.products.map((product: any) => {
   delete product._id
@@ -10,6 +10,9 @@ const productsWithNoIds = data.products.map((product: any) => {
 /* =============================================================================
 
 ============================================================================= */
+// This should be added to the .gitignore
+// Note that the image property will still point at
+// URLs that are assumed to be in the public folder
 
 const handler = async (req: any, res: any) => {
   try {
