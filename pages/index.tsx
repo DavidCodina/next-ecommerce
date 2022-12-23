@@ -9,7 +9,10 @@ import { useRouter } from 'next/router'
 import Head from 'next/head'
 import { toast } from 'react-toastify'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons'
+import {
+  faMagnifyingGlass,
+  faXmarkCircle
+} from '@fortawesome/free-solid-svg-icons'
 
 // Custom imports
 import { useAppContext } from 'contexts'
@@ -35,6 +38,7 @@ const prices = [
 
 // Used to populate the ratings select.
 const ratings = [1, 2, 3, 4, 5]
+const PAGE_SIZE = 2 // Todo: Allow user to set dynamically
 
 /* ========================================================================
                                 HomePage
@@ -42,13 +46,11 @@ const ratings = [1, 2, 3, 4, 5]
 
 const HomePage: NextPage<
   InferGetServerSidePropsType<typeof getServerSideProps>
-> = ({ brands, categories, products, productCount }) => {
+> = ({ brands, categories, products, productCount, pages }) => {
   const { addCartItem, cartItems } = useAppContext()
   const router = useRouter()
   const { query } = router
-  // These values are being pulled off of router.query and many of them are
-  // used as the value prop for inputs. Thus, the 'state' is being managed
-  // not through actual local state variables, but by the string query.
+
   const {
     brand = '',
     category = '',
@@ -58,6 +60,15 @@ const HomePage: NextPage<
     sort = ''
   }: any = query
 
+  let { page = '1' }: any = query
+  page = Number(page)
+
+  // const isFirst = page === 1
+  // const isLast = page * PAGE_SIZE >= productCount
+  const isPrevious = page > 1
+  const isNext = productCount > page * PAGE_SIZE
+  const lastPage = pages // Math.ceil(productCount / PAGE_SIZE)
+
   const [nameSearch, setNameSearch] = useState(name)
 
   /* ======================
@@ -65,8 +76,9 @@ const HomePage: NextPage<
   ====================== */
 
   const filterSearch = (searchObject: any) => {
-    const { brand, category, name, price, rating, sort } = searchObject
+    const { brand, category, name, page, price, rating, sort } = searchObject
 
+    // Really, what we're checking in each case is if x !== 'undefined'
     if (typeof brand === 'string') {
       query.brand = brand
     }
@@ -77,6 +89,10 @@ const HomePage: NextPage<
 
     if (typeof name === 'string') {
       query.name = name
+    }
+
+    if (typeof page === 'number') {
+      query.page = page.toString()
     }
 
     if (typeof price === 'string') {
@@ -153,193 +169,203 @@ const HomePage: NextPage<
   }
 
   /* ======================
-      renderFilterForm()
+    renderFilterFields()
   ====================== */
 
-  const renderFilterForm = () => {
+  const renderFilterFields = () => {
     if (!products) {
       return null
     }
 
     return (
       <Fragment>
-        <section
-          className='p-3 border border-primary rounded-3'
-          style={{ backgroundColor: '#fafafa', marginBottom: 15 }}
-        >
-          {/* Name Search: In this implementation we are maintaining nameSearch state,
-          then calling filterSearch({ name: nameSearch }) on click of the associated
-          search button. However, this is somewhat inconsistent with the way that the
-          rest of the inputs work. A better approach would entail using a debounce hook
-          on the nameSearch value, and automatically calling setNameSearch after about a
-          second. */}
+        {/* Name Search: In this implementation we are maintaining nameSearch state,
+        then calling filterSearch({ name: nameSearch }) on click of the associated
+        search button. However, this is somewhat inconsistent with the way that the
+        rest of the inputs work. A better approach would entail using a debounce hook
+        on the nameSearch value, and automatically calling setNameSearch after about a
+        second. */}
 
-          <div className='row mb-3 gy-2 gx-3'>
-            <div className='col-12 col-sm-6 col-md-4 col-lg-2'>
-              <label className='form-label'>Filter Products</label>
+        <section className='row mb-2 gy-2 gx-3'>
+          <div className='col-12 col-sm-6 col-md-4 col-lg-2'>
+            <label className='form-label'>Filter Products</label>
 
-              <div className='input-group'>
-                <input
-                  className='form-control form-control-sm'
-                  onChange={(e) => {
-                    setNameSearch(e.target.value)
-                  }}
-                  placeholder='Search...'
-                  type='text'
-                  value={nameSearch}
-                />
+            <div className='input-group'>
+              <input
+                className='form-control form-control-sm'
+                onChange={(e) => {
+                  setNameSearch(e.target.value)
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    filterSearch({ name: nameSearch, page: 1 })
+                  }
+                }}
+                placeholder='Search...'
+                style={{ paddingRight: 22 }}
+                type='text'
+                value={nameSearch}
+              />
 
-                <button
-                  className='btn btn-secondary btn-sm fw-bold'
-                  onClick={() => {
-                    filterSearch({ name: nameSearch })
-                  }}
-                  title='Filter products by name'
-                >
-                  <FontAwesomeIcon icon={faMagnifyingGlass} />
-                </button>
-              </div>
+              <FontAwesomeIcon
+                icon={faXmarkCircle}
+                onClick={() => {
+                  setNameSearch('')
+                  // You have to reset the page back to one for each new search
+                  filterSearch({ name: '', page: 1 })
+                }}
+                role='button'
+                style={{
+                  color: '#ccc',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  position: 'absolute',
+                  right: 35,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  zIndex: 10
+                }}
+                tabIndex={0}
+              />
+
+              <button
+                className='btn btn-secondary btn-sm fw-bold'
+                onClick={() => {
+                  // You have to reset the page back to one for each new search
+                  filterSearch({ name: nameSearch, page: 1 })
+                }}
+                title='Filter products by name'
+              >
+                <FontAwesomeIcon icon={faMagnifyingGlass} />
+              </button>
             </div>
-
-            {/* Category */}
-            {Array.isArray(categories) && (
-              <div className='col-12 col-sm-6 col-md-4 col-lg-2'>
-                <label className='form-label'>Category</label>
-                <select
-                  className='form-select form-select-sm'
-                  onChange={(e) => {
-                    filterSearch({ category: e.target.value })
-                  }}
-                  value={category}
-                >
-                  <option value=''>All</option>
-                  {categories.map((category: any) => {
-                    return (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    )
-                  })}
-                </select>
-              </div>
-            )}
-
-            {/* Brand */}
-            {Array.isArray(brands) && (
-              <div className='col-12 col-sm-6 col-md-4 col-lg-2'>
-                <label className='form-label'>Brand</label>
-                <select
-                  className='form-select form-select-sm'
-                  onChange={(e) => {
-                    filterSearch({ brand: e.target.value })
-                  }}
-                  value={brand}
-                >
-                  <option value=''>All</option>
-                  {brands.map((brand: any) => {
-                    return (
-                      <option key={brand} value={brand}>
-                        {brand}
-                      </option>
-                    )
-                  })}
-                </select>
-              </div>
-            )}
-
-            {/* Price */}
-            {Array.isArray(prices) && (
-              <div className='col-12 col-sm-6 col-md-4 col-lg-2'>
-                <label className='form-label'>Price</label>
-                <select
-                  className='form-select form-select-sm'
-                  onChange={(e) => {
-                    filterSearch({ price: e.target.value })
-                  }}
-                  value={price}
-                >
-                  <option value=''>All</option>
-                  {prices.map((price: any) => {
-                    return (
-                      <option key={price.value} value={price.value}>
-                        {price.name}
-                      </option>
-                    )
-                  })}
-                </select>
-              </div>
-            )}
-
-            {/* Rating */}
-            {Array.isArray(ratings) && (
-              <div className='col-12 col-sm-6 col-md-4 col-lg-2'>
-                <label className='form-label'>Rating</label>
-                <select
-                  className='form-select form-select-sm'
-                  onChange={(e) => {
-                    filterSearch({ rating: e.target.value })
-                  }}
-                  value={rating}
-                >
-                  <option value=''>All</option>
-                  {ratings.map((rating: any) => {
-                    return (
-                      <option key={rating} value={rating}>
-                        {rating}+ of 5
-                      </option>
-                    )
-                  })}
-                </select>
-              </div>
-            )}
-
-            {/* Sort By */}
-            {Array.isArray(ratings) && (
-              <div className='col-12 col-sm-6 col-md-4 col-lg-2'>
-                <label className='form-label'>Sort Products</label>
-                <select
-                  className='form-select form-select-sm'
-                  onChange={(e) => {
-                    filterSearch({ sort: e.target.value })
-                  }}
-                  value={sort}
-                >
-                  <option value=''>Default</option>
-                  <option value='lowest'>Price: Low to High</option>
-                  <option value='highest'>Price: High to Low</option>
-                  <option value='toprated'>Customer Reviews</option>
-                  <option value='newest'>Newest</option>
-                  <option value='oldest'>Oldest</option>
-                </select>
-              </div>
-            )}
           </div>
 
-          {/* Reset Search Criteria Button */}
-          <button
-            className='d-block w-100 btn btn-secondary btn-sm fw-bold'
-            disabled={
-              !(
-                brand !== '' ||
-                category !== '' ||
-                name !== '' ||
-                price !== '' ||
-                rating !== '' ||
-                sort !== ''
-              )
-            }
-            onClick={() => {
-              setNameSearch('')
-              router.push('/')
-            }}
-          >
-            Reset Search Criteria
-          </button>
+          {/* Category */}
+          {Array.isArray(categories) && (
+            <div className='col-12 col-sm-6 col-md-4 col-lg-2'>
+              <label className='form-label'>Category</label>
+              <select
+                className='form-select form-select-sm'
+                onChange={(e) => {
+                  filterSearch({ category: e.target.value })
+                }}
+                value={category}
+              >
+                <option value=''>All</option>
+                {categories.map((category: any) => {
+                  return (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+          )}
+
+          {/* Brand */}
+          {Array.isArray(brands) && (
+            <div className='col-12 col-sm-6 col-md-4 col-lg-2'>
+              <label className='form-label'>Brand</label>
+              <select
+                className='form-select form-select-sm'
+                onChange={(e) => {
+                  filterSearch({ brand: e.target.value })
+                }}
+                value={brand}
+              >
+                <option value=''>All</option>
+                {brands.map((brand: any) => {
+                  return (
+                    <option key={brand} value={brand}>
+                      {brand}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+          )}
+
+          {/* Price */}
+          {Array.isArray(prices) && (
+            <div className='col-12 col-sm-6 col-md-4 col-lg-2'>
+              <label className='form-label'>Price</label>
+              <select
+                className='form-select form-select-sm'
+                onChange={(e) => {
+                  filterSearch({ price: e.target.value })
+                }}
+                value={price}
+              >
+                <option value=''>All</option>
+                {prices.map((price: any) => {
+                  return (
+                    <option key={price.value} value={price.value}>
+                      {price.name}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+          )}
+
+          {/* Rating */}
+          {Array.isArray(ratings) && (
+            <div className='col-12 col-sm-6 col-md-4 col-lg-2'>
+              <label className='form-label'>Rating</label>
+              <select
+                className='form-select form-select-sm'
+                onChange={(e) => {
+                  filterSearch({ rating: e.target.value })
+                }}
+                value={rating}
+              >
+                <option value=''>All</option>
+                {ratings.map((rating: any) => {
+                  return (
+                    <option key={rating} value={rating}>
+                      {rating}+ of 5
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+          )}
+
+          {/* Sort By */}
+          {Array.isArray(ratings) && (
+            <div className='col-12 col-sm-6 col-md-4 col-lg-2'>
+              <label className='form-label'>Sort Products</label>
+              <select
+                className='form-select form-select-sm'
+                onChange={(e) => {
+                  filterSearch({ sort: e.target.value })
+                }}
+                value={sort}
+              >
+                <option value=''>Default</option>
+                <option value='lowest'>Price: Low to High</option>
+                <option value='highest'>Price: High to Low</option>
+                <option value='toprated'>Customer Reviews</option>
+                <option value='newest'>Newest</option>
+                <option value='oldest'>Oldest</option>
+              </select>
+            </div>
+          )}
         </section>
 
         {/* Search Summary */}
         <section
-          style={{ fontSize: 14, marginBottom: 15, textAlign: 'center' }}
+          style={{
+            alignItems: 'center',
+            display: 'flex',
+            flexWrap: 'wrap',
+            fontSize: 14,
+            gap: 5,
+            justifyContent: 'center',
+            marginBottom: 15
+          }}
         >
           <span className='text-primary fw-bold'>
             {products.length === 0 ? 'No' : productCount}{' '}
@@ -377,8 +403,237 @@ const HomePage: NextPage<
               <span className='fw-bold text-secondary'>:</span> Rating {rating}+
             </Fragment>
           )}
+
+          {(name !== '' ||
+            category !== '' ||
+            brand !== '' ||
+            price !== '' ||
+            rating !== '' ||
+            sort !== '') && (
+            <button
+              className='btn text-danger p-0 m-0'
+              style={{ lineHeight: 1 }}
+              title='Reset Filter Criteria'
+            >
+              <FontAwesomeIcon
+                icon={faXmarkCircle}
+                onClick={() => {
+                  setNameSearch('')
+                  router.push('/')
+                }}
+                style={{ fontSize: 16 }}
+              />
+            </button>
+          )}
         </section>
       </Fragment>
+    )
+  }
+
+  /* ======================
+      renderProducts()
+  ====================== */
+
+  const renderProducts = () => {
+    if (!Array.isArray(products)) {
+      return null
+    }
+
+    if (Array.isArray(products) && products.length === 0) {
+      return null
+    }
+
+    return (
+      <section
+        style={{
+          display: 'grid',
+          gap: 15,
+          gridAutoColumns: 'auto', // Default: 'auto'. The grid-auto-columns property sets a size for the columns in a grid container
+          gridAutoFlow: 'row', // Default: 'row'. The grid-auto-flow property controls how auto-placed items get inserted in the grid.
+          gridAutoRows: 'minmax(50px, auto)', // Default: 'auto'. The grid-auto-rows property sets a size for the rows in a grid container.
+          gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+          gridTemplateRows: 'none' // Default: 'none'. The grid-template-rows property specifies the number (and the heights) of the rows in a grid layout.
+        }}
+      >
+        {products.map((product: any) => (
+          <ProductItem
+            handleAddToCart={handleAddCartItem}
+            key={product._id}
+            product={product}
+          />
+        ))}
+      </section>
+    )
+  }
+
+  /* ======================
+      renderPagination()
+  ====================== */
+
+  const renderPagination = () => {
+    if (!Array.isArray(products) || products.length === 0) {
+      return null
+    }
+
+    let pagesArray = [...Array(pages)].map((_, index: number) => index + 1)
+
+    // Change pagesArray based on value of page.
+    switch (page) {
+      case 1:
+        pagesArray = pagesArray.slice(0, 3)
+        break
+
+      case 2:
+        pagesArray = pagesArray.slice(0, 3)
+        break
+
+      case pagesArray.length:
+        pagesArray = [...pagesArray].reverse().slice(0, 3).reverse()
+        break
+
+      default:
+        pagesArray = [page - 1, page]
+        if (isNext) {
+          pagesArray.push(page + 1)
+        }
+    }
+
+    return (
+      <section
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          marginTop: 25
+        }}
+      >
+        <ul className='pagination pagination-sm shadow-sm'>
+          {/* First Page */}
+          <li className={`page-item${!isPrevious ? ' disabled' : ''}`}>
+            <button
+              className='page-link border-primary'
+              disabled={!isPrevious}
+              onClick={() => {
+                filterSearch({ page: 1 })
+              }}
+            >
+              «
+            </button>
+          </li>
+
+          {/* Previous Page */}
+          <li className={`page-item${!isPrevious ? ' disabled' : ''}`}>
+            <button
+              className='page-link border-primary'
+              disabled={!isPrevious}
+              onClick={(e) => {
+                const newPage = page - 1 > 1 ? page - 1 : 1
+
+                // Help make the active pagination item transition happen more smoothly.
+                const target = e.target as HTMLButtonElement
+                const pagination = target.parentElement?.parentElement
+                const activeItem =
+                  pagination?.querySelector('.page-item.active')
+                const newActiveItem = pagination?.querySelector(
+                  `[data-page="${newPage}"]`
+                )
+
+                if (activeItem) {
+                  activeItem.classList.remove('active')
+                }
+
+                if (newActiveItem) {
+                  newActiveItem.classList.add('active')
+                }
+
+                filterSearch({ page: newPage })
+              }}
+            >
+              ‹
+            </button>
+          </li>
+
+          {pagesArray.map((p) => {
+            return (
+              <li
+                className={`page-item${page === p ? ' active' : ''}`}
+                data-page={p}
+                key={p}
+              >
+                <button
+                  className='page-link border-primary'
+                  onClick={(e) => {
+                    // Help make the active pagination item transition happen more smoothly.
+                    const target = e.target as HTMLButtonElement
+                    const pagination = target.parentElement?.parentElement
+                    const activeItem =
+                      pagination?.querySelector('.page-item.active')
+                    const newActiveItem = pagination?.querySelector(
+                      `[data-page="${p}"]`
+                    )
+
+                    if (activeItem) {
+                      activeItem.classList.remove('active')
+                    }
+
+                    if (newActiveItem) {
+                      newActiveItem.classList.add('active')
+                    }
+
+                    filterSearch({ page: p })
+                  }}
+                >
+                  {p}
+                </button>
+              </li>
+            )
+          })}
+
+          {/* Next Page */}
+          <li className={`page-item${!isNext ? ' disabled' : ''}`}>
+            <button
+              className='page-link border-primary'
+              disabled={!isNext}
+              onClick={(e) => {
+                const newPage = page + 1 < pages ? page + 1 : pages
+
+                // Help make the active pagination item transition happen more smoothly.
+                const target = e.target as HTMLButtonElement
+                const pagination = target.parentElement?.parentElement
+                const activeItem =
+                  pagination?.querySelector('.page-item.active')
+                const newActiveItem = pagination?.querySelector(
+                  `[data-page="${newPage}"]`
+                )
+
+                if (activeItem) {
+                  activeItem.classList.remove('active')
+                }
+
+                if (newActiveItem) {
+                  newActiveItem.classList.add('active')
+                }
+
+                filterSearch({ page: newPage })
+              }}
+            >
+              ›
+            </button>
+          </li>
+
+          {/* Last Page */}
+          <li className={`page-item${!isNext ? ' disabled' : ''}`}>
+            <button
+              className='page-link border-primary'
+              disabled={!isNext}
+              onClick={() => {
+                filterSearch({ page: lastPage })
+              }}
+            >
+              »
+            </button>
+          </li>
+        </ul>
+      </section>
     )
   }
 
@@ -404,28 +659,9 @@ const HomePage: NextPage<
           Products
         </CartoonFont>
 
-        {renderFilterForm()}
-
-        <section
-          style={{
-            display: 'grid',
-            gap: 15,
-            gridAutoColumns: 'auto', // Default: 'auto'. The grid-auto-columns property sets a size for the columns in a grid container
-            gridAutoFlow: 'row', // Default: 'row'. The grid-auto-flow property controls how auto-placed items get inserted in the grid.
-            gridAutoRows: 'minmax(50px, auto)', // Default: 'auto'. The grid-auto-rows property sets a size for the rows in a grid container.
-            gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-            gridTemplateRows: 'none' // Default: 'none'. The grid-template-rows property specifies the number (and the heights) of the rows in a grid layout.
-          }}
-        >
-          {Array.isArray(products) &&
-            products.map((product: any) => (
-              <ProductItem
-                handleAddToCart={handleAddCartItem}
-                key={product._id}
-                product={product}
-              />
-            ))}
-        </section>
+        {renderFilterFields()}
+        {renderProducts()}
+        {renderPagination()}
       </main>
     </Fragment>
   )
@@ -436,6 +672,8 @@ const HomePage: NextPage<
 ====================== */
 
 export const getServerSideProps: GetServerSideProps = async ({ query }) => {
+  const pageSize = Number(query.pageSize) || PAGE_SIZE
+  const page = Number(query.page) || 1
   const brand = query.brand || ''
   const category = query.category || ''
   const name = query.name || ''
@@ -448,7 +686,7 @@ export const getServerSideProps: GetServerSideProps = async ({ query }) => {
   const nameFilter = name ? { name: { $regex: name, $options: 'i' } } : {}
 
   // price will be '' or a price.value such as '1-50'.
-  // Thus, we need to parse the string to get the  >= & <= values.
+  // Thus we need to parse the string to get the  >= & <= values.
   // Then we need to turn them into numbers.
   const priceFilter = price
     ? {
@@ -496,6 +734,8 @@ export const getServerSideProps: GetServerSideProps = async ({ query }) => {
       ...ratingFilter
     })
       .sort(sortOrder)
+      .skip(pageSize * (page - 1))
+      .limit(pageSize)
       .lean()
       .exec()
 
@@ -513,7 +753,9 @@ export const getServerSideProps: GetServerSideProps = async ({ query }) => {
         props: {
           brands: null,
           categories: null,
-          countProduct: null,
+          productCount: 0,
+          page: 1,
+          pages: 1,
           products: null
         }
       }
@@ -526,6 +768,8 @@ export const getServerSideProps: GetServerSideProps = async ({ query }) => {
         brands: brands,
         categories: categories,
         productCount: productCount,
+        page: page,
+        pages: Math.ceil(productCount / pageSize),
         products: products
       }
     }
@@ -537,7 +781,11 @@ export const getServerSideProps: GetServerSideProps = async ({ query }) => {
       props: {
         brands: null,
         categories: null,
-        countProduct: null,
+        // For these next three props we could send back null without
+        // Getting an error, but it seems better to use numbers.
+        productCount: 0,
+        page: 1,
+        pages: 1,
         products: null
       }
     }
