@@ -3,42 +3,20 @@ import connectDB from 'utils/db'
 import Product from 'models/productModel'
 
 // Third-party imports
-import React, { Fragment, useState } from 'react'
+import React, { Fragment } from 'react'
 import { NextPage, GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import { toast } from 'react-toastify'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import {
-  faMagnifyingGlass,
-  faXmarkCircle
-} from '@fortawesome/free-solid-svg-icons'
 
 // Custom imports
+import { ProductsFilter, ProductsPagination } from 'components'
 import { useAppContext } from 'contexts'
 import { getProduct } from 'client-api'
 import { CartoonFont, ProductItem } from 'components'
 import styles from 'styles/HomePage.module.scss'
 
-// Used to populate the price <select>
-const prices = [
-  {
-    name: '$1 to $50',
-    value: '1-50'
-  },
-  {
-    name: '$51 to $200',
-    value: '51-200'
-  },
-  {
-    name: '$201 to $1000',
-    value: '201-1000'
-  }
-]
-
-// Used to populate the ratings select.
-const ratings = [1, 2, 3, 4, 5]
-const PAGE_SIZE = 2 // Todo: Allow user to set dynamically
+const PAGE_SIZE = 2
 
 /* ========================================================================
                                 HomePage
@@ -50,76 +28,8 @@ const HomePage: NextPage<
   const { addCartItem, cartItems } = useAppContext()
   const router = useRouter()
   const { query } = router
-
-  const {
-    brand = '',
-    category = '',
-    name = '',
-    price = '',
-    rating = '',
-    sort = ''
-  }: any = query
-
   let { page = '1' }: any = query
   page = Number(page)
-
-  // const isFirst = page === 1
-  // const isLast = page * PAGE_SIZE >= productCount
-  const isPrevious = page > 1
-  const isNext = productCount > page * PAGE_SIZE
-  const lastPage = pages // Math.ceil(productCount / PAGE_SIZE)
-
-  const [nameSearch, setNameSearch] = useState(name)
-
-  /* ======================
-      filterSearch()
-  ====================== */
-
-  const filterSearch = (searchObject: any) => {
-    const { brand, category, name, page, price, rating, sort } = searchObject
-
-    // Really, what we're checking in each case is if x !== 'undefined'
-    if (typeof brand === 'string') {
-      query.brand = brand
-    }
-
-    if (typeof category === 'string') {
-      query.category = category
-    }
-
-    if (typeof name === 'string') {
-      query.name = name
-    }
-
-    if (typeof page === 'number') {
-      query.page = page.toString()
-    }
-
-    if (typeof price === 'string') {
-      query.price = price
-    }
-
-    if (typeof rating === 'string') {
-      query.rating = rating
-    }
-
-    if (typeof sort === 'string') {
-      query.sort = sort
-    }
-
-    // Loop through properties in query and remove any property where the value is ''.
-    for (const property in query) {
-      if (query[property] === '') {
-        delete query[property]
-      }
-    }
-
-    // Update the query string params, effectively reloading the page.
-    router.push({
-      pathname: router.pathname,
-      query: query
-    })
-  }
 
   /* ======================
       handleAddCartItem()
@@ -169,268 +79,6 @@ const HomePage: NextPage<
   }
 
   /* ======================
-    renderFilterFields()
-  ====================== */
-
-  const renderFilterFields = () => {
-    if (!products) {
-      return null
-    }
-
-    return (
-      <Fragment>
-        {/* Name Search: In this implementation we are maintaining nameSearch state,
-        then calling filterSearch({ name: nameSearch }) on click of the associated
-        search button. However, this is somewhat inconsistent with the way that the
-        rest of the inputs work. A better approach would entail using a debounce hook
-        on the nameSearch value, and automatically calling setNameSearch after about a
-        second. */}
-
-        <section className='row mb-2 gy-2 gx-3'>
-          <div className='col-12 col-sm-6 col-md-4 col-lg-2'>
-            <label className='form-label'>Filter Products</label>
-
-            <div className='input-group'>
-              <input
-                className='form-control form-control-sm'
-                onChange={(e) => {
-                  setNameSearch(e.target.value)
-                }}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    filterSearch({ name: nameSearch, page: 1 })
-                  }
-                }}
-                placeholder='Search...'
-                style={{ paddingRight: 22 }}
-                type='text'
-                value={nameSearch}
-              />
-
-              <FontAwesomeIcon
-                icon={faXmarkCircle}
-                onClick={() => {
-                  setNameSearch('')
-                  // You have to reset the page back to one for each new search
-                  filterSearch({ name: '', page: 1 })
-                }}
-                role='button'
-                style={{
-                  color: '#ccc',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  position: 'absolute',
-                  right: 35,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  zIndex: 10
-                }}
-                tabIndex={0}
-              />
-
-              <button
-                className='btn btn-secondary btn-sm fw-bold'
-                onClick={() => {
-                  // You have to reset the page back to one for each new search
-                  filterSearch({ name: nameSearch, page: 1 })
-                }}
-                title='Filter products by name'
-              >
-                <FontAwesomeIcon icon={faMagnifyingGlass} />
-              </button>
-            </div>
-          </div>
-
-          {/* Category */}
-          {Array.isArray(categories) && (
-            <div className='col-12 col-sm-6 col-md-4 col-lg-2'>
-              <label className='form-label'>Category</label>
-              <select
-                className='form-select form-select-sm'
-                onChange={(e) => {
-                  filterSearch({ category: e.target.value })
-                }}
-                value={category}
-              >
-                <option value=''>All</option>
-                {categories.map((category: any) => {
-                  return (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  )
-                })}
-              </select>
-            </div>
-          )}
-
-          {/* Brand */}
-          {Array.isArray(brands) && (
-            <div className='col-12 col-sm-6 col-md-4 col-lg-2'>
-              <label className='form-label'>Brand</label>
-              <select
-                className='form-select form-select-sm'
-                onChange={(e) => {
-                  filterSearch({ brand: e.target.value })
-                }}
-                value={brand}
-              >
-                <option value=''>All</option>
-                {brands.map((brand: any) => {
-                  return (
-                    <option key={brand} value={brand}>
-                      {brand}
-                    </option>
-                  )
-                })}
-              </select>
-            </div>
-          )}
-
-          {/* Price */}
-          {Array.isArray(prices) && (
-            <div className='col-12 col-sm-6 col-md-4 col-lg-2'>
-              <label className='form-label'>Price</label>
-              <select
-                className='form-select form-select-sm'
-                onChange={(e) => {
-                  filterSearch({ price: e.target.value })
-                }}
-                value={price}
-              >
-                <option value=''>All</option>
-                {prices.map((price: any) => {
-                  return (
-                    <option key={price.value} value={price.value}>
-                      {price.name}
-                    </option>
-                  )
-                })}
-              </select>
-            </div>
-          )}
-
-          {/* Rating */}
-          {Array.isArray(ratings) && (
-            <div className='col-12 col-sm-6 col-md-4 col-lg-2'>
-              <label className='form-label'>Rating</label>
-              <select
-                className='form-select form-select-sm'
-                onChange={(e) => {
-                  filterSearch({ rating: e.target.value })
-                }}
-                value={rating}
-              >
-                <option value=''>All</option>
-                {ratings.map((rating: any) => {
-                  return (
-                    <option key={rating} value={rating}>
-                      {rating}+ of 5
-                    </option>
-                  )
-                })}
-              </select>
-            </div>
-          )}
-
-          {/* Sort By */}
-          {Array.isArray(ratings) && (
-            <div className='col-12 col-sm-6 col-md-4 col-lg-2'>
-              <label className='form-label'>Sort Products</label>
-              <select
-                className='form-select form-select-sm'
-                onChange={(e) => {
-                  filterSearch({ sort: e.target.value })
-                }}
-                value={sort}
-              >
-                <option value=''>Default</option>
-                <option value='lowest'>Price: Low to High</option>
-                <option value='highest'>Price: High to Low</option>
-                <option value='toprated'>Customer Reviews</option>
-                <option value='newest'>Newest</option>
-                <option value='oldest'>Oldest</option>
-              </select>
-            </div>
-          )}
-        </section>
-
-        {/* Search Summary */}
-        <section
-          style={{
-            alignItems: 'center',
-            display: 'flex',
-            flexWrap: 'wrap',
-            fontSize: 14,
-            gap: 5,
-            justifyContent: 'center',
-            marginBottom: 15
-          }}
-        >
-          <span className='text-primary fw-bold'>
-            {products.length === 0 ? 'No' : productCount}{' '}
-            {products.length === 1 ? 'Result' : 'Results'}
-          </span>
-          {name !== '' && (
-            <Fragment>
-              {' '}
-              <span className='fw-bold text-secondary'>:</span> {name}
-            </Fragment>
-          )}
-
-          {category !== '' && (
-            <Fragment>
-              {' '}
-              <span className='fw-bold text-secondary'>:</span> {category}
-            </Fragment>
-          )}
-          {brand !== '' && (
-            <Fragment>
-              {' '}
-              <span className='fw-bold text-secondary'>:</span> {brand}
-            </Fragment>
-          )}
-
-          {price !== '' && (
-            <Fragment>
-              {' '}
-              <span className='fw-bold text-secondary'>:</span> ${price}
-            </Fragment>
-          )}
-          {rating !== '' && (
-            <Fragment>
-              {' '}
-              <span className='fw-bold text-secondary'>:</span> Rating {rating}+
-            </Fragment>
-          )}
-
-          {(name !== '' ||
-            category !== '' ||
-            brand !== '' ||
-            price !== '' ||
-            rating !== '' ||
-            sort !== '') && (
-            <button
-              className='btn text-danger p-0 m-0'
-              style={{ lineHeight: 1 }}
-              title='Reset Filter Criteria'
-            >
-              <FontAwesomeIcon
-                icon={faXmarkCircle}
-                onClick={() => {
-                  setNameSearch('')
-                  router.push('/')
-                }}
-                style={{ fontSize: 16 }}
-              />
-            </button>
-          )}
-        </section>
-      </Fragment>
-    )
-  }
-
-  /* ======================
       renderProducts()
   ====================== */
 
@@ -448,11 +96,11 @@ const HomePage: NextPage<
         style={{
           display: 'grid',
           gap: 15,
-          gridAutoColumns: 'auto', // Default: 'auto'. The grid-auto-columns property sets a size for the columns in a grid container
-          gridAutoFlow: 'row', // Default: 'row'. The grid-auto-flow property controls how auto-placed items get inserted in the grid.
-          gridAutoRows: 'minmax(50px, auto)', // Default: 'auto'. The grid-auto-rows property sets a size for the rows in a grid container.
+          gridAutoColumns: 'auto',
+          gridAutoFlow: 'row',
+          gridAutoRows: 'minmax(50px, auto)',
           gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-          gridTemplateRows: 'none' // Default: 'none'. The grid-template-rows property specifies the number (and the heights) of the rows in a grid layout.
+          gridTemplateRows: 'none'
         }}
       >
         {products.map((product: any) => (
@@ -462,177 +110,6 @@ const HomePage: NextPage<
             product={product}
           />
         ))}
-      </section>
-    )
-  }
-
-  /* ======================
-      renderPagination()
-  ====================== */
-
-  const renderPagination = () => {
-    if (!Array.isArray(products) || products.length === 0) {
-      return null
-    }
-
-    let pagesArray = [...Array(pages)].map((_, index: number) => index + 1)
-
-    // Change pagesArray based on value of page.
-    switch (page) {
-      case 1:
-        pagesArray = pagesArray.slice(0, 3)
-        break
-
-      case 2:
-        pagesArray = pagesArray.slice(0, 3)
-        break
-
-      case pagesArray.length:
-        pagesArray = [...pagesArray].reverse().slice(0, 3).reverse()
-        break
-
-      default:
-        pagesArray = [page - 1, page]
-        if (isNext) {
-          pagesArray.push(page + 1)
-        }
-    }
-
-    return (
-      <section
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          marginTop: 25
-        }}
-      >
-        <ul className='pagination pagination-sm shadow-sm'>
-          {/* First Page */}
-          <li className={`page-item${!isPrevious ? ' disabled' : ''}`}>
-            <button
-              className='page-link border-primary'
-              disabled={!isPrevious}
-              onClick={() => {
-                filterSearch({ page: 1 })
-              }}
-            >
-              «
-            </button>
-          </li>
-
-          {/* Previous Page */}
-          <li className={`page-item${!isPrevious ? ' disabled' : ''}`}>
-            <button
-              className='page-link border-primary'
-              disabled={!isPrevious}
-              onClick={(e) => {
-                const newPage = page - 1 > 1 ? page - 1 : 1
-
-                // Help make the active pagination item transition happen more smoothly.
-                const target = e.target as HTMLButtonElement
-                const pagination = target.parentElement?.parentElement
-                const activeItem =
-                  pagination?.querySelector('.page-item.active')
-                const newActiveItem = pagination?.querySelector(
-                  `[data-page="${newPage}"]`
-                )
-
-                if (activeItem) {
-                  activeItem.classList.remove('active')
-                }
-
-                if (newActiveItem) {
-                  newActiveItem.classList.add('active')
-                }
-
-                filterSearch({ page: newPage })
-              }}
-            >
-              ‹
-            </button>
-          </li>
-
-          {pagesArray.map((p) => {
-            return (
-              <li
-                className={`page-item${page === p ? ' active' : ''}`}
-                data-page={p}
-                key={p}
-              >
-                <button
-                  className='page-link border-primary'
-                  onClick={(e) => {
-                    // Help make the active pagination item transition happen more smoothly.
-                    const target = e.target as HTMLButtonElement
-                    const pagination = target.parentElement?.parentElement
-                    const activeItem =
-                      pagination?.querySelector('.page-item.active')
-                    const newActiveItem = pagination?.querySelector(
-                      `[data-page="${p}"]`
-                    )
-
-                    if (activeItem) {
-                      activeItem.classList.remove('active')
-                    }
-
-                    if (newActiveItem) {
-                      newActiveItem.classList.add('active')
-                    }
-
-                    filterSearch({ page: p })
-                  }}
-                >
-                  {p}
-                </button>
-              </li>
-            )
-          })}
-
-          {/* Next Page */}
-          <li className={`page-item${!isNext ? ' disabled' : ''}`}>
-            <button
-              className='page-link border-primary'
-              disabled={!isNext}
-              onClick={(e) => {
-                const newPage = page + 1 < pages ? page + 1 : pages
-
-                // Help make the active pagination item transition happen more smoothly.
-                const target = e.target as HTMLButtonElement
-                const pagination = target.parentElement?.parentElement
-                const activeItem =
-                  pagination?.querySelector('.page-item.active')
-                const newActiveItem = pagination?.querySelector(
-                  `[data-page="${newPage}"]`
-                )
-
-                if (activeItem) {
-                  activeItem.classList.remove('active')
-                }
-
-                if (newActiveItem) {
-                  newActiveItem.classList.add('active')
-                }
-
-                filterSearch({ page: newPage })
-              }}
-            >
-              ›
-            </button>
-          </li>
-
-          {/* Last Page */}
-          <li className={`page-item${!isNext ? ' disabled' : ''}`}>
-            <button
-              className='page-link border-primary'
-              disabled={!isNext}
-              onClick={() => {
-                filterSearch({ page: lastPage })
-              }}
-            >
-              »
-            </button>
-          </li>
-        </ul>
       </section>
     )
   }
@@ -659,9 +136,39 @@ const HomePage: NextPage<
           Products
         </CartoonFont>
 
-        {renderFilterFields()}
+        {/* ProductsFilter will return null if one or more of these
+        props are falsy, or productCount is not a number. */}
+        <ProductsFilter
+          brands={brands}
+          categories={categories}
+          productCount={productCount}
+          products={products}
+        />
+
         {renderProducts()}
-        {renderPagination()}
+
+        {page > 0 &&
+        pages > 0 &&
+        typeof productCount === 'number' &&
+        products ? (
+          <section
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              marginTop: 25
+            }}
+          >
+            <ProductsPagination
+              className='pagination-sm shadow-sm'
+              page={page}
+              pages={pages}
+              pageSize={PAGE_SIZE}
+              productCount={productCount}
+              products={products}
+              style={{}}
+            />
+          </section>
+        ) : null}
       </main>
     </Fragment>
   )
